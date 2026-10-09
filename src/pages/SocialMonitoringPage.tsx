@@ -4,21 +4,20 @@ import {
   Search,
   Filter,
   Zap,
-  ExternalLink,
   CheckCircle2,
   Info,
-  AlertCircle,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { RiskBadge, StatusBadge } from '@/components/shared/Badges';
+import { DataSourceStatus } from '@/components/shared/DataSourceStatus';
 import { ThreatDetailDrawer } from '@/components/shared/ThreatDetailDrawer';
 import type { ThreatDetection, SocialPlatform, RiskLevel } from '@/types';
 
-const PLATFORMS: (SocialPlatform | 'All')[] = ['All', 'Instagram', 'Facebook', 'LinkedIn', 'X', 'YouTube', 'TikTok', 'Telegram'];
+const PLATFORMS: (SocialPlatform | 'All')[] = ['All', 'Instagram', 'Facebook', 'LinkedIn', 'X', 'YouTube', 'TikTok', 'Telegram', 'Bluesky'];
 const RISK_LEVELS: (RiskLevel | 'All')[] = ['All', 'Critical', 'High', 'Medium', 'Low'];
 
 export function SocialMonitoringPage() {
-  const { detections, isScanning, runScanning } = useApp();
+  const { detections, isScanning, runScanning, sourceStatuses } = useApp();
   const [search, setSearch] = useState('');
   const [platformFilter, setPlatformFilter] = useState<SocialPlatform | 'All'>('All');
   const [riskFilter, setRiskFilter] = useState<RiskLevel | 'All'>('All');
@@ -70,6 +69,7 @@ export function SocialMonitoringPage() {
           <h1 className="text-2xl font-bold text-white mb-1">Social Monitoring</h1>
           <p className="text-slate-400 text-sm">Detect fake and impersonating social media profiles</p>
         </div>
+        <DataSourceStatus sources={sourceStatuses} />
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-sky-500/10 mb-4">
             <Share2 size={32} className="text-sky-400" />
@@ -93,6 +93,7 @@ export function SocialMonitoringPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Social Monitoring</h1>
+          <p className="text-xs text-amber-400/90">Bluesky public search plus sample profiles; other social networks are not connected</p>
           <p className="text-slate-400 text-sm">
             {counts.threats} suspicious · {counts.official} official · {counts.total} total
           </p>
@@ -109,6 +110,8 @@ export function SocialMonitoringPage() {
           )}
         </button>
       </div>
+
+      <DataSourceStatus sources={sourceStatuses} />
 
       {/* Filters */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col lg:flex-row gap-3">

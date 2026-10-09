@@ -11,10 +11,15 @@
     "lint": "eslint .",
     "preview": "vite preview --host 0.0.0.0",
     "start": "node server/index.js",
+    "test": "node --test server/*.test.js",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
+    "better-sqlite3": "^11.10.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "lucide-react": "^0.446.0",

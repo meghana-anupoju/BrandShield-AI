@@ -56,6 +56,17 @@ export const brandProfile = {
 
 export const socialCandidates = [
   {
+    id: 'soc-official-1',
+    platform: 'Instagram',
+    displayName: 'NovaPay',
+    username: 'novapay',
+    profileUrl: 'https://instagram.com/novapay',
+    bio: 'Official NovaPay Instagram. Secure digital payments for everyone.',
+    verified: true,
+    source: 'Demo Dataset',
+    lastChecked: new Date().toISOString(),
+  },
+  {
     id: 'soc-3',
     platform: 'Instagram',
     displayName: 'NovaPay Support',
@@ -65,7 +76,7 @@ export const socialCandidates = [
     accountCreatedDate: '2024-08-10',
     followerCount: 320,
     verified: false,
-    source: 'API Dataset',
+    source: 'Demo Dataset',
     lastChecked: new Date().toISOString(),
   },
   {
@@ -78,7 +89,7 @@ export const socialCandidates = [
     accountCreatedDate: '2024-11-20',
     followerCount: 89,
     verified: false,
-    source: 'API Dataset',
+    source: 'Demo Dataset',
     lastChecked: new Date().toISOString(),
   },
   {
@@ -91,12 +102,23 @@ export const socialCandidates = [
     accountCreatedDate: '2025-01-05',
     followerCount: 1240,
     verified: false,
-    source: 'API Dataset',
+    source: 'Demo Dataset',
     lastChecked: new Date().toISOString(),
   },
 ];
 
 export const appCandidates = [
+  {
+    id: 'app-official-1',
+    appName: 'NovaPay',
+    store: 'Google Play',
+    packageId: 'com.novapay.app',
+    publisher: 'NovaPay Inc.',
+    storeUrl: 'https://play.google.com/store/apps/details?id=com.novapay.app',
+    description: 'Official NovaPay app — secure digital payments and mobile wallet.',
+    source: 'Demo Dataset',
+    lastChecked: new Date().toISOString(),
+  },
   {
     id: 'app-3',
     appName: 'NovaPay Pro',
@@ -105,7 +127,7 @@ export const appCandidates = [
     publisher: 'SmartApps Developer',
     storeUrl: 'https://play.google.com/store/apps/details?id=com.novapaypro.wallet',
     description: 'NovaPay Pro — enhanced payment features. Send money and claim rewards instantly. Verify your credentials to unlock bonus.',
-    source: 'API Dataset',
+    source: 'Demo Dataset',
     lastChecked: new Date().toISOString(),
   },
   {
@@ -116,7 +138,7 @@ export const appCandidates = [
     publisher: 'BlueWave Finance',
     storeUrl: 'https://apps.apple.com/app/novapay-wallet/id987654321',
     description: 'Claim your reward immediately. Pay a verification fee to activate wallet security.',
-    source: 'API Dataset',
+    source: 'Demo Dataset',
     lastChecked: new Date().toISOString(),
   },
 ];

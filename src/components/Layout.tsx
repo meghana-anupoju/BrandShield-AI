@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { AuraLogo } from '@/components/shared/AuraLogo';
+import { SupportChat } from '@/components/shared/SupportChat';
 import type { NavSection } from '@/types';
 
 const navItems: { section: NavSection; icon: typeof Info; label: string }[] = [
@@ -133,6 +134,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
         <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">{children}</main>
       </div>
+      <SupportChat />
     </div>
   );
 }

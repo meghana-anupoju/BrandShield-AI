@@ -15,6 +15,7 @@ export type SocialPlatform =
   | 'YouTube'
   | 'TikTok'
   | 'Telegram'
+  | 'Bluesky'
   | 'Other';
 
 export type AppStore = 'Google Play' | 'Apple App Store' | 'Amazon Appstore' | 'Other';
@@ -83,6 +84,7 @@ export interface CandidateApp {
   storeUrl: string;
   description: string;
   iconRef?: string;
+  logoSimilarity?: number;
   source: string;
   lastChecked: string;
 }
@@ -121,7 +123,16 @@ export interface ScanResult {
   officialExcluded: number;
   source: string;
   liveSourceAvailable: boolean;
+  sourceStatuses?: DataSourceStatus[];
   detections: ThreatDetection[];
+}
+
+export interface ScanHistoryEntry extends Omit<ScanResult, 'detections' | 'sourceStatuses'> {}
+
+export interface DataSourceStatus {
+  name: string;
+  status: 'connected' | 'unavailable' | 'demo' | 'not_checked';
+  detail: string;
 }
 
 export interface AppSettings {

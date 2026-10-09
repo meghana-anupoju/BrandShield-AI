@@ -1,140 +1,91 @@
 import express from 'express';
 import cors from 'cors';
-import { brandProfile, socialCandidates, appCandidates } from './data.js';
+import { socialCandidates, appCandidates } from './data.js';
+import { buildDetections } from './detection.js';
+import { collectLiveCandidates } from './sources.js';
+import {
+  getScanById,
+  getScanHistory,
+  getCandidates,
+  loadBrandProfile,
+  persistCandidates,
+  persistBrandProfile,
+  persistScan,
+} from './database.js';
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
+let brandProfile = loadBrandProfile();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
-function normalizeText(value = '') {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+function isBrandProfile(value) {
+  return value
+    && typeof value.companyName === 'string'
+    && value.companyName.trim().length > 0
+    && typeof value.websiteUrl === 'string'
+    && Array.isArray(value.officialDomains)
+    && Array.isArray(value.officialSocials)
+    && Array.isArray(value.officialApps)
+    && Array.isArray(value.knownPublishers);
 }
 
-function similarityScore(a = '', b = '') {
-  const left = normalizeText(a);
-  const right = normalizeText(b);
-  if (!left || !right) return 0;
-  if (left === right) return 100;
+const socialPlatforms = new Set(['Instagram', 'Facebook', 'LinkedIn', 'X', 'YouTube', 'TikTok', 'Telegram', 'Bluesky', 'Other']);
+const appStores = new Set(['Google Play', 'Apple App Store', 'Amazon Appstore', 'Other']);
 
-  let distance = 0;
-  const maxLength = Math.max(left.length, right.length);
-  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
-    if (left[index] !== right[index]) {
-      distance += 1;
-    }
+function validHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+function normalizeImportedCandidates(value) {
+  if (!value || !Array.isArray(value.socials) || !Array.isArray(value.apps)
+    || value.socials.length + value.apps.length > 500) {
+    return null;
   }
 
-  return Math.max(0, Math.round(((maxLength - distance) / maxLength) * 100));
-}
+  const socials = value.socials.map((candidate) => {
+    if (!candidate || typeof candidate.id !== 'string' || candidate.id.length > 200
+      || !socialPlatforms.has(candidate.platform)
+      || typeof candidate.displayName !== 'string' || candidate.displayName.length > 200
+      || typeof candidate.username !== 'string' || candidate.username.length > 200
+      || typeof candidate.profileUrl !== 'string' || !validHttpUrl(candidate.profileUrl)) return null;
+    const logoSimilarity = Number(candidate.logoSimilarity);
+    return {
+      ...candidate,
+      bio: typeof candidate.bio === 'string' ? candidate.bio.slice(0, 4000) : '',
+      verified: candidate.verified === true,
+      logoSimilarity: Number.isFinite(logoSimilarity) ? Math.min(100, Math.max(0, logoSimilarity)) : undefined,
+      source: 'Imported Dataset',
+      lastChecked: new Date().toISOString(),
+    };
+  });
 
-function containsSuspiciousKeyword(text = '') {
-  const haystack = text.toLowerCase();
-  const matches = ['support', 'official', 'help', 'rewards', 'verify', 'security', 'care', 'service', 'offer'];
-  return matches.filter((match) => haystack.includes(match));
-}
+  const apps = value.apps.map((candidate) => {
+    if (!candidate || typeof candidate.id !== 'string' || candidate.id.length > 200
+      || !appStores.has(candidate.store)
+      || typeof candidate.appName !== 'string' || candidate.appName.length > 200
+      || typeof candidate.publisher !== 'string' || candidate.publisher.length > 200
+      || typeof candidate.storeUrl !== 'string' || !validHttpUrl(candidate.storeUrl)) return null;
+    return {
+      ...candidate,
+      description: typeof candidate.description === 'string' ? candidate.description.slice(0, 4000) : '',
+      packageId: typeof candidate.packageId === 'string' ? candidate.packageId.slice(0, 300) : undefined,
+      logoSimilarity: Number.isFinite(Number(candidate.logoSimilarity))
+        ? Math.min(100, Math.max(0, Number(candidate.logoSimilarity)))
+        : undefined,
+      source: 'Imported Dataset',
+      lastChecked: new Date().toISOString(),
+    };
+  });
 
-function containsScamPhrase(text = '') {
-  const haystack = text.toLowerCase();
-  const matches = ['urgent payment', 'claim your reward', 'verify your credentials', 'guaranteed rewards', 'limited time'];
-  return matches.filter((match) => haystack.includes(match));
-}
-
-function buildDetections() {
-  const detections = [];
-
-  for (const candidate of socialCandidates) {
-    const combined = `${candidate.displayName} ${candidate.username} ${candidate.bio}`;
-    const nameSimilarity = similarityScore(candidate.displayName, brandProfile.companyName);
-    const usernameSimilarity = similarityScore(candidate.username, brandProfile.companyName);
-    const suspiciousKeywords = containsSuspiciousKeyword(combined);
-    const scamMatches = containsScamPhrase(candidate.bio || '');
-
-    const triggered = [
-      nameSimilarity >= 70,
-      usernameSimilarity >= 70,
-      suspiciousKeywords.length > 0,
-      scamMatches.length > 0,
-      !candidate.verified,
-    ].filter(Boolean).length;
-
-    const riskScore = Math.min(100, Math.max(0, triggered * 20 + (nameSimilarity >= 70 ? 10 : 0) + (scamMatches.length > 0 ? 15 : 0)));
-
-    if (triggered > 0) {
-      detections.push({
-        id: `det-${candidate.id}`,
-        candidateId: candidate.id,
-        candidateName: candidate.displayName,
-        assetType: 'Social Profile',
-        platformOrStore: candidate.platform,
-        url: candidate.profileUrl,
-        riskScore,
-        riskLevel: riskScore >= 75 ? 'Critical' : riskScore >= 50 ? 'High' : riskScore >= 25 ? 'Medium' : 'Low',
-        similarityScore: Math.max(nameSimilarity, usernameSimilarity),
-        indicators: [
-          { type: 'Name Similarity', detail: `Display name similarity: ${nameSimilarity}%`, weight: 25, triggered: nameSimilarity >= 70 },
-          { type: 'Suspicious Keywords', detail: suspiciousKeywords.length ? `Matches: ${suspiciousKeywords.join(', ')}` : 'No suspicious suffixes found', weight: 25, triggered: suspiciousKeywords.length > 0 },
-          { type: 'Scam Detection', detail: scamMatches.length ? `Scam phrases: ${scamMatches.join(', ')}` : 'No scam language detected', weight: 25, triggered: scamMatches.length > 0 },
-          { type: 'Verification Status', detail: candidate.verified ? 'Account is verified' : 'Account is not verified', weight: 15, triggered: !candidate.verified },
-        ],
-        detectionReasons: [
-          nameSimilarity >= 70 ? `Name similarity ${nameSimilarity}%` : null,
-          suspiciousKeywords.length ? `Brand mimic keywords found: ${suspiciousKeywords.join(', ')}` : null,
-          scamMatches.length ? `Scam language detected: ${scamMatches.join(', ')}` : null,
-          !candidate.verified ? 'Profile is not verified' : null,
-        ].filter(Boolean),
-        isOfficial: false,
-        status: 'New',
-        analystNotes: '',
-        lastScanned: new Date().toISOString(),
-        source: candidate.source,
-        bio: candidate.bio,
-        verified: candidate.verified,
-        followerCount: candidate.followerCount,
-      });
-    }
-  }
-
-  for (const candidate of appCandidates) {
-    const nameSimilarity = similarityScore(candidate.appName, brandProfile.companyName);
-    const suspiciousKeywords = containsSuspiciousKeyword(`${candidate.appName} ${candidate.description}`);
-    const scamMatches = containsScamPhrase(candidate.description || '');
-    const riskScore = Math.min(100, Math.max(0, (nameSimilarity >= 70 ? 30 : 10) + (suspiciousKeywords.length > 0 ? 25 : 0) + (scamMatches.length > 0 ? 25 : 0)));
-
-    if (riskScore >= 20) {
-      detections.push({
-        id: `det-${candidate.id}`,
-        candidateId: candidate.id,
-        candidateName: candidate.appName,
-        assetType: 'Mobile App',
-        platformOrStore: candidate.store,
-        url: candidate.storeUrl,
-        riskScore,
-        riskLevel: riskScore >= 75 ? 'Critical' : riskScore >= 50 ? 'High' : riskScore >= 25 ? 'Medium' : 'Low',
-        similarityScore: nameSimilarity,
-        indicators: [
-          { type: 'App Name Similarity', detail: `App name similarity: ${nameSimilarity}%`, weight: 30, triggered: nameSimilarity >= 60 },
-          { type: 'Scam Detection', detail: scamMatches.length ? `Scam phrases: ${scamMatches.join(', ')}` : 'No scam language detected', weight: 25, triggered: scamMatches.length > 0 },
-          { type: 'Brand Mimicry', detail: suspiciousKeywords.length ? `Keywords: ${suspiciousKeywords.join(', ')}` : 'No suspicious keywords', weight: 20, triggered: suspiciousKeywords.length > 0 },
-        ],
-        detectionReasons: [
-          nameSimilarity >= 60 ? `App name similarity ${nameSimilarity}%` : null,
-          suspiciousKeywords.length ? `Suspicious keywords detected: ${suspiciousKeywords.join(', ')}` : null,
-          scamMatches.length ? `Scam language detected: ${scamMatches.join(', ')}` : null,
-        ].filter(Boolean),
-        isOfficial: false,
-        status: 'New',
-        analystNotes: '',
-        lastScanned: new Date().toISOString(),
-        source: candidate.source,
-        description: candidate.description,
-        publisher: candidate.publisher,
-      });
-    }
-  }
-
-  return detections;
+  if (socials.some((candidate) => !candidate) || apps.some((candidate) => !candidate)) return null;
+  return { socials, apps };
 }
 
 app.get('/api/health', (req, res) => {
@@ -149,20 +100,87 @@ app.get('/api/brand-profile', (req, res) => {
   res.json(brandProfile);
 });
 
-app.post('/api/scan', (req, res) => {
-  const detections = buildDetections();
-  res.json({
+app.put('/api/brand-profile', (req, res) => {
+  if (!isBrandProfile(req.body)) {
+    return res.status(400).json({ error: 'Invalid brand profile.' });
+  }
+
+  brandProfile = {
+    ...req.body,
+    companyName: req.body.companyName.trim(),
+    updatedAt: new Date().toISOString(),
+  };
+  persistBrandProfile(brandProfile);
+  return res.json(brandProfile);
+});
+
+app.get('/api/scans', (req, res) => {
+  const requestedLimit = Number.parseInt(req.query.limit, 10);
+  const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 20;
+  res.json(getScanHistory(limit));
+});
+
+app.get('/api/scans/:id', (req, res) => {
+  const scan = getScanById(req.params.id);
+  if (!scan) return res.status(404).json({ error: 'Scan not found.' });
+  return res.json(scan);
+});
+
+app.post('/api/candidates', (req, res) => {
+  const candidates = normalizeImportedCandidates(req.body);
+  if (!candidates) {
+    return res.status(400).json({ error: 'Invalid candidate import. Provide up to 500 valid social profiles and app listings.' });
+  }
+  persistCandidates(candidates.socials, candidates.apps);
+  return res.status(201).json({
+    importedSocials: candidates.socials.length,
+    importedApps: candidates.apps.length,
+  });
+});
+
+app.post('/api/scan', async (req, res) => {
+  const live = await collectLiveCandidates(brandProfile.companyName);
+  const imported = getCandidates();
+  const includeDemoData = req.body?.settings?.demoMode !== false;
+  const allSocialCandidates = [
+    ...(includeDemoData ? socialCandidates : []),
+    ...imported.socialCandidates,
+    ...live.socialCandidates,
+  ];
+  const allAppCandidates = [
+    ...(includeDemoData ? appCandidates : []),
+    ...imported.appCandidates,
+    ...live.appCandidates,
+  ];
+  const { detections, officialExcluded } = buildDetections(
+    brandProfile,
+    allSocialCandidates,
+    allAppCandidates,
+    req.body?.settings,
+  );
+  const hasLiveSource = live.sourceStatuses.some((source) => source.status === 'connected');
+  const activeSourceStatuses = [
+    ...(includeDemoData
+      ? [{ name: 'Built-in demo records', status: 'demo', detail: `${socialCandidates.length} social and ${appCandidates.length} app examples` }]
+      : []),
+    { name: 'Imported analyst dataset', status: 'demo', detail: `${imported.socialCandidates.length} social and ${imported.appCandidates.length} app records` },
+    ...live.sourceStatuses,
+  ];
+  const scan = {
     id: `scan-${Date.now()}`,
     timestamp: new Date().toISOString(),
-    totalScanned: socialCandidates.length + appCandidates.length,
-    socialScanned: socialCandidates.length,
-    appScanned: appCandidates.length,
-    threatsDetected: detections.length,
-    officialExcluded: 0,
-    source: 'Live API Dataset',
-    liveSourceAvailable: true,
+    totalScanned: allSocialCandidates.length + allAppCandidates.length,
+    socialScanned: allSocialCandidates.length,
+    appScanned: allAppCandidates.length,
+    threatsDetected: detections.filter((detection) => !detection.isOfficial).length,
+    officialExcluded,
+    source: hasLiveSource ? 'Sample dataset + external public APIs' : 'Demo Dataset',
+    liveSourceAvailable: hasLiveSource,
+    sourceStatuses: activeSourceStatuses,
     detections,
-  });
+  };
+  persistScan(scan);
+  return res.json(scan);
 });
 
 app.listen(port, () => {

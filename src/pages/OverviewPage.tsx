@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { RiskBadge, StatusBadge } from '@/components/shared/Badges';
+import { DataSourceStatus } from '@/components/shared/DataSourceStatus';
 import {
   calculateMetrics,
   getThreatDistribution,
@@ -40,7 +41,7 @@ const RISK_COLORS: Record<string, string> = {
 };
 
 export function OverviewPage() {
-  const { detections, lastScanTime, isScanning, runScanning, setActiveSection } = useApp();
+  const { detections, lastScanTime, isScanning, runScanning, setActiveSection, sourceStatuses } = useApp();
   const metrics = calculateMetrics(detections);
   const threatDist = getThreatDistribution(detections);
   const socialVsApp = getSocialVsAppThreats(detections);
@@ -58,6 +59,7 @@ export function OverviewPage() {
           <h1 className="text-2xl font-bold text-white mb-1">Overview</h1>
           <p className="text-slate-400 text-sm">Detect impersonation. Protect your brand.</p>
         </div>
+        <DataSourceStatus sources={sourceStatuses} />
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-sky-500/10 mb-4">
             <Shield size={32} className="text-sky-400" />
@@ -128,7 +130,7 @@ export function OverviewPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Overview</h1>
-          <p className="text-slate-400 text-sm">Real-time brand protection dashboard</p>
+          <p className="text-slate-400 text-sm">Bluesky and Apple App Store public search plus a clearly labeled sample dataset</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800">
@@ -160,6 +162,8 @@ export function OverviewPage() {
           </button>
         </div>
       </div>
+
+      <DataSourceStatus sources={sourceStatuses} />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">

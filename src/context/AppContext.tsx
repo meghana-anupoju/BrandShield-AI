@@ -14,6 +14,8 @@ import type {
   CandidateSocial,
   CandidateApp,
   NavSection,
+  DataSourceStatus,
+  ScanHistoryEntry,
 } from '@/types';
 import { storage } from '@/lib/storage';
 import { runScan } from '@/lib/detectionEngine';
@@ -37,13 +39,15 @@ interface AppContextValue {
 
   // Brand profile
   brandProfile: BrandProfile;
-  saveBrandProfile: (profile: BrandProfile) => void;
+  saveBrandProfile: (profile: BrandProfile) => Promise<void>;
 
   // Detections
   detections: ThreatDetection[];
   runScanning: () => void;
   isScanning: boolean;
   lastScanTime: string | null;
+  sourceStatuses: DataSourceStatus[];
+  scanHistory: ScanHistoryEntry[];
 
   // Detection management
   updateDetectionStatus: (id: string, status: InvestigationStatus) => void;
@@ -54,7 +58,7 @@ interface AppContextValue {
   saveSettings: (settings: AppSettings) => void;
 
   // Import
-  importCandidates: (socials: CandidateSocial[], apps: CandidateApp[]) => void;
+  importCandidates: (socials: CandidateSocial[], apps: CandidateApp[]) => Promise<void>;
   importedSocials: CandidateSocial[];
   importedApps: CandidateApp[];
 
@@ -70,6 +74,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [detections, setDetections] = useState<ThreatDetection[]>(storage.getDetections());
   const [isScanning, setIsScanning] = useState(false);
   const [lastScanTime, setLastScanTime] = useState<string | null>(storage.getLastScan());
+  const [sourceStatuses, setSourceStatuses] = useState<DataSourceStatus[]>([
+    { name: 'Built-in demo records', status: 'demo', detail: 'Sample detections are available locally.' },
+    { name: 'Bluesky public API', status: 'not_checked', detail: 'Queried only when you run a scan.' },
+    { name: 'Apple App Store Search API', status: 'not_checked', detail: 'Queried only when you run a scan.' },
+  ]);
+  const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([]);
   const [settings, setSettings] = useState<AppSettings>(storage.getSettings());
   const [importedSocials, setImportedSocials] = useState<CandidateSocial[]>([]);
   const [importedApps, setImportedApps] = useState<CandidateApp[]>([]);
@@ -80,21 +90,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loadInitialData = useCallback(async () => {
     try {
-      const profile = await api.getBrandProfile();
+      const [profile, history] = await Promise.all([api.getBrandProfile(), api.getScanHistory()]);
       if (profile) {
         setBrandProfile(profile);
       }
-
-      const scan = await api.runScan();
-      if (scan?.detections) {
-        setDetections(scan.detections);
-        if (scan.timestamp) {
-          setLastScanTime(scan.timestamp);
-          storage.saveLastScan(scan.timestamp);
-        }
-      }
+      setScanHistory(history);
     } catch {
-      // Fall back to local demo data when the API is unavailable.
+      setSourceStatuses([
+        { name: 'Built-in demo records', status: 'demo', detail: 'Using local sample candidates.' },
+        { name: 'Backend scan API', status: 'unavailable', detail: 'Could not reach the backend; live providers were not queried.' },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -131,16 +136,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     storage.saveSettings(settings);
   }, [settings]);
 
-  const saveBrandProfile = useCallback((profile: BrandProfile) => {
-    setBrandProfile({ ...profile, updatedAt: new Date().toISOString() });
+  const saveBrandProfile = useCallback(async (profile: BrandProfile) => {
+    const updatedProfile = { ...profile, updatedAt: new Date().toISOString() };
+    setBrandProfile(updatedProfile);
+    storage.saveBrandProfile(updatedProfile);
+    await api.saveBrandProfile(updatedProfile);
   }, []);
 
   const runScanning = useCallback(async () => {
     setIsScanning(true);
 
     try {
-      const scanResult = await api.runScan();
+      const scanResult = await api.runScan(settings);
       if (scanResult?.detections) {
+        if (scanResult.sourceStatuses) setSourceStatuses(scanResult.sourceStatuses);
         const existingMap = new Map(detections.map((d) => [d.candidateId, d]));
         const merged = scanResult.detections.map((det) => {
           const existing = existingMap.get(det.candidateId);
@@ -158,17 +167,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const now = scanResult.timestamp ?? new Date().toISOString();
         setLastScanTime(now);
         storage.saveLastScan(now);
+        setScanHistory((history) => [{
+          ...scanResult,
+          timestamp: now,
+        }, ...history.filter((scan) => scan.id !== scanResult.id)].slice(0, 20));
         setIsScanning(false);
         return;
       }
     } catch {
-      // Fallback to the local scan engine when the API is unavailable.
+      setSourceStatuses([
+        { name: 'Built-in demo records', status: 'demo', detail: 'Using local sample candidates.' },
+        { name: 'Backend scan API', status: 'unavailable', detail: 'Could not reach the backend; live providers were not queried.' },
+      ]);
     }
 
     // Simulate scan delay for UX
     setTimeout(() => {
-      const socialCandidates = [...DEMO_SOCIAL_CANDIDATES, ...importedSocials];
-      const appCandidates = [...DEMO_APP_CANDIDATES, ...importedApps];
+      const socialCandidates = [...(settings.demoMode ? DEMO_SOCIAL_CANDIDATES : []), ...importedSocials];
+      const appCandidates = [...(settings.demoMode ? DEMO_APP_CANDIDATES : []), ...importedApps];
 
       // Merge existing notes/statuses with new detections
       const existingMap = new Map(detections.map((d) => [d.candidateId, d]));
@@ -177,7 +193,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         socialCandidates,
         appCandidates,
         profile: brandProfile,
-        source: 'Demo Dataset',
+        source: settings.demoMode ? 'Demo Dataset' : 'Imported Dataset',
         liveSourceAvailable: false,
       });
 
@@ -194,12 +210,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
 
       setDetections(merged);
+      setSourceStatuses([
+        ...(settings.demoMode
+          ? [{ name: 'Built-in demo records', status: 'demo' as const, detail: 'Sample candidate records included in this scan.' }]
+          : []),
+        { name: 'Imported analyst dataset', status: 'demo', detail: `${importedSocials.length} social and ${importedApps.length} app records` },
+        { name: 'External provider APIs', status: 'unavailable', detail: 'Backend unavailable; external searches were not run.' },
+      ]);
       const now = new Date().toISOString();
       setLastScanTime(now);
       storage.saveLastScan(now);
       setIsScanning(false);
     }, 1200);
-  }, [importedSocials, importedApps, brandProfile, detections]);
+  }, [importedSocials, importedApps, brandProfile, detections, settings]);
 
   const updateDetectionStatus = useCallback((id: string, status: InvestigationStatus) => {
     setDetections((prev) =>
@@ -217,7 +240,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSettings(s);
   }, []);
 
-  const importCandidates = useCallback((socials: CandidateSocial[], apps: CandidateApp[]) => {
+  const importCandidates = useCallback(async (socials: CandidateSocial[], apps: CandidateApp[]) => {
+    await api.saveCandidates(socials, apps);
     setImportedSocials((prev) => [...prev, ...socials]);
     setImportedApps((prev) => [...prev, ...apps]);
   }, []);
@@ -247,6 +271,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         runScanning,
         isScanning,
         lastScanTime,
+        sourceStatuses,
+        scanHistory,
         updateDetectionStatus,
         updateDetectionNotes,
         settings,

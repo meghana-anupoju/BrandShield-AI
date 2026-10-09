@@ -6,10 +6,10 @@ import {
   Zap,
   CheckCircle2,
   Info,
-  ExternalLink,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { RiskBadge, StatusBadge } from '@/components/shared/Badges';
+import { DataSourceStatus } from '@/components/shared/DataSourceStatus';
 import { ThreatDetailDrawer } from '@/components/shared/ThreatDetailDrawer';
 import type { ThreatDetection, AppStore, RiskLevel } from '@/types';
 
@@ -17,7 +17,7 @@ const STORES: (AppStore | 'All')[] = ['All', 'Google Play', 'Apple App Store', '
 const RISK_LEVELS: (RiskLevel | 'All')[] = ['All', 'Critical', 'High', 'Medium', 'Low'];
 
 export function AppMonitoringPage() {
-  const { detections, isScanning, runScanning } = useApp();
+  const { detections, isScanning, runScanning, sourceStatuses } = useApp();
   const [search, setSearch] = useState('');
   const [storeFilter, setStoreFilter] = useState<AppStore | 'All'>('All');
   const [riskFilter, setRiskFilter] = useState<RiskLevel | 'All'>('All');
@@ -69,6 +69,7 @@ export function AppMonitoringPage() {
           <h1 className="text-2xl font-bold text-white mb-1">App Monitoring</h1>
           <p className="text-slate-400 text-sm">Detect suspicious and impersonating mobile applications</p>
         </div>
+        <DataSourceStatus sources={sourceStatuses} />
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange-500/10 mb-4">
             <Smartphone size={32} className="text-orange-400" />
@@ -92,6 +93,7 @@ export function AppMonitoringPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">App Monitoring</h1>
+          <p className="text-xs text-amber-400/90">Apple App Store live search plus samples; Google Play and Amazon are not connected</p>
           <p className="text-slate-400 text-sm">
             {counts.threats} suspicious · {counts.official} official · {counts.total} total
           </p>
@@ -108,6 +110,8 @@ export function AppMonitoringPage() {
           )}
         </button>
       </div>
+
+      <DataSourceStatus sources={sourceStatuses} />
 
       {/* Filters */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col lg:flex-row gap-3">

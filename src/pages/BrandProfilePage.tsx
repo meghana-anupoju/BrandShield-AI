@@ -23,7 +23,7 @@ import type {
   AppStore,
 } from '@/types';
 
-const SOCIAL_PLATFORMS: SocialPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'X', 'YouTube', 'TikTok', 'Telegram', 'Other'];
+const SOCIAL_PLATFORMS: SocialPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'X', 'YouTube', 'TikTok', 'Telegram', 'Bluesky', 'Other'];
 const APP_STORES: AppStore[] = ['Google Play', 'Apple App Store', 'Amazon Appstore', 'Other'];
 
 function isValidUrl(url: string): boolean {
@@ -40,7 +40,7 @@ export function BrandProfilePage() {
   const [editing, setEditing] = useState(false);
   const [profile, setProfile] = useState<BrandProfile>(brandProfile);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const completion = calculateCompletion(profile);
@@ -59,7 +59,7 @@ export function BrandProfilePage() {
     return Math.round((checks.filter(Boolean).length / checks.length) * 100);
   }
 
-  function showToast(type: 'success' | 'error', message: string) {
+  function showToast(type: 'success' | 'error' | 'warning', message: string) {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3000);
   }
@@ -74,7 +74,7 @@ export function BrandProfilePage() {
     return Object.keys(e).length === 0;
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!validate()) {
       showToast('error', 'Please fix the validation errors before saving');
       return;
@@ -85,10 +85,16 @@ export function BrandProfilePage() {
       officialDomains: [...new Set(profile.officialDomains.map((d) => d.trim()).filter(Boolean))],
       knownPublishers: [...new Set(profile.knownPublishers.map((p) => p.trim()).filter(Boolean))],
     };
-    saveBrandProfile(cleaned);
-    setProfile(cleaned);
-    setEditing(false);
-    showToast('success', 'Brand profile saved successfully');
+    try {
+      await saveBrandProfile(cleaned);
+      setProfile(cleaned);
+      setEditing(false);
+      showToast('success', 'Brand profile saved and connected to backend scans');
+    } catch {
+      setProfile(cleaned);
+      setEditing(false);
+      showToast('warning', 'Saved in this browser, but backend sync failed. Scans may use the previous profile.');
+    }
   }
 
   function handleCancel() {

@@ -8,7 +8,6 @@ import {
   RotateCcw,
   Info,
   Save,
-  CheckCircle2,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Toast } from '@/components/shared/Toast';
@@ -16,7 +15,7 @@ import { ConfirmDialog } from '@/components/shared/Toast';
 import type { AppSettings, CandidateSocial, CandidateApp } from '@/types';
 
 export function SettingsPage() {
-  const { settings, saveSettings, resetDemoData, importCandidates, detections, brandProfile } = useApp();
+  const { settings, saveSettings, resetDemoData, importCandidates, detections, brandProfile, sourceStatuses } = useApp();
   const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [showReset, setShowReset] = useState(false);
@@ -47,9 +46,12 @@ export function SettingsPage() {
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const data = JSON.parse(reader.result as string);
+        if (!data || !Array.isArray(data.socials) || !Array.isArray(data.apps)) {
+          throw new Error('JSON must contain socials and apps arrays.');
+        }
         const socials: CandidateSocial[] = (data.socials || []).map((s: Record<string, unknown>, i: number) => ({
           id: `import-soc-${Date.now()}-${i}`,
           platform: s.platform as CandidateSocial['platform'],
@@ -72,14 +74,15 @@ export function SettingsPage() {
           storeUrl: a.storeUrl as string,
           description: (a.description as string) || '',
           packageId: a.packageId as string | undefined,
+          logoSimilarity: a.logoSimilarity as number | undefined,
           source: 'Imported',
           lastChecked: new Date().toISOString(),
         }));
 
-        importCandidates(socials, apps);
+        await importCandidates(socials, apps);
         showToast('success', `Imported ${socials.length} social profiles and ${apps.length} apps`);
       } catch {
-        showToast('error', 'Invalid JSON file format');
+        showToast('error', 'Import failed: check the JSON structure and backend connection');
       }
     };
     reader.readAsText(file);
@@ -147,13 +150,13 @@ export function SettingsPage() {
             <label className="flex items-center gap-3 text-sm text-slate-300">
               <input
                 type="checkbox"
-                checked={localSettings.autoExcludeOfficial}
-                onChange={(e) => setLocalSettings((s) => ({ ...s, autoExcludeOfficial: e.target.checked }))}
+                checked
+                disabled
                 className="accent-sky-500 w-4 h-4"
               />
-              Automatically exclude official assets from alerts
+              Always exclude registered official assets from threats
             </label>
-            <p className="text-xs text-slate-500 mt-1 ml-7">Official assets take precedence over fuzzy similarity scoring</p>
+            <p className="text-xs text-slate-500 mt-1 ml-7">A safety rule: matched official assets receive zero risk and never appear as threats</p>
           </div>
 
           <div>
@@ -185,7 +188,7 @@ export function SettingsPage() {
           <h2 className="text-sm font-semibold text-white">Import Candidate Data</h2>
         </div>
         <p className="text-xs text-slate-400 mb-4">
-          Import candidate social profiles and mobile apps from a JSON file for testing. The file should contain a <code className="text-sky-400">{"{ socials: [...], apps: [...] }"}</code> structure.
+          Import exported social profiles and app listings for analysis. Imported records are validated and saved in the backend database. The file should contain a <code className="text-sky-400">{"{ socials: [...], apps: [...] }"}</code> structure.
         </p>
         <button
           onClick={() => fileInputRef.current?.click()}
@@ -214,28 +217,24 @@ export function SettingsPage() {
           <Database size={18} className="text-violet-400" />
           <h2 className="text-sm font-semibold text-white">Data Source Status</h2>
         </div>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 size={16} className="text-emerald-400" />
-              <span className="text-sm text-slate-200">Demo Dataset</span>
+        <div className="space-y-2">
+          {sourceStatuses.map((source) => (
+            <div key={source.name} className="flex items-center justify-between gap-4 px-4 py-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
+              <div className="min-w-0">
+                <span className="text-sm text-slate-200">{source.name}</span>
+                <p className="mt-0.5 truncate text-xs text-slate-500">{source.detail}</p>
+              </div>
+              <span className={`flex-shrink-0 text-xs ${
+                source.status === 'connected' ? 'text-emerald-400' :
+                  source.status === 'demo' ? 'text-amber-400' : 'text-slate-500'
+              }`}>
+                {source.status === 'connected' ? 'Connected' : source.status === 'demo' ? 'Demo data' :
+                  source.status === 'not_checked' ? 'Not checked' : 'Unavailable'}
+              </span>
             </div>
-            <span className="text-xs text-emerald-400">Available</span>
-          </div>
-          <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
-            <div className="flex items-center gap-3">
-              <AlertTriangle size={16} className="text-amber-400" />
-              <span className="text-sm text-slate-200">Live API Sources</span>
-            </div>
-            <span className="text-xs text-amber-400">Not configured</span>
-          </div>
-          <div className="px-4 py-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-            <p className="text-xs text-amber-300/80">
-              <Info size={12} className="inline mr-1" />
-              Live source unavailable — demo dataset remains available. Configure external API integrations to enable live monitoring.
-            </p>
-          </div>
+          ))}
         </div>
+        <p className="mt-3 text-xs text-slate-500">Live search covers Bluesky and Apple App Store only. Other platforms require authorized provider access or exported candidate data.</p>
       </div>
 
       {/* System info */}

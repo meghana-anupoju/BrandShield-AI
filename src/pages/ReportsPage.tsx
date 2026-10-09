@@ -27,7 +27,7 @@ import {
 } from 'recharts';
 
 export function ReportsPage() {
-  const { detections, brandProfile, lastScanTime, settings } = useApp();
+  const { detections, brandProfile, lastScanTime, settings, scanHistory } = useApp();
   const metrics = calculateMetrics(detections);
   const platformBreakdown = getPlatformBreakdown(detections);
 
@@ -158,6 +158,43 @@ export function ReportsPage() {
           </div>
         )}
       </div>
+
+      <section className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+        <div className="border-b border-slate-800 px-6 py-4">
+          <h3 className="text-sm font-semibold text-white">Recent Scan History</h3>
+          <p className="mt-1 text-xs text-slate-500">Stored by the backend in SQLite, including source availability.</p>
+        </div>
+        {scanHistory.length === 0 ? (
+          <p className="px-6 py-5 text-sm text-slate-400">No backend scan history is available yet. Run a scan while the API is connected.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
+                  <th className="px-5 py-3 font-medium">Scan time</th>
+                  <th className="px-5 py-3 font-medium">Source</th>
+                  <th className="px-5 py-3 font-medium">Assets</th>
+                  <th className="px-5 py-3 font-medium">Threats</th>
+                  <th className="px-5 py-3 font-medium">Official excluded</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scanHistory.map((scan) => (
+                  <tr key={scan.id} className="border-b border-slate-800/70 last:border-0">
+                    <td className="whitespace-nowrap px-5 py-3 text-slate-300">{new Date(scan.timestamp).toLocaleString()}</td>
+                    <td className="px-5 py-3 text-slate-400">
+                      {scan.liveSourceAvailable ? 'Public API + demo' : 'Demo dataset'}
+                    </td>
+                    <td className="px-5 py-3 text-slate-300">{scan.totalScanned}</td>
+                    <td className="px-5 py-3 text-slate-300">{scan.threatsDetected}</td>
+                    <td className="px-5 py-3 text-emerald-400">{scan.officialExcluded}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {/* Detailed detections table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
