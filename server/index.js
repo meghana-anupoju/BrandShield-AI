@@ -7,6 +7,7 @@ import {
   getScanById,
   getScanHistory,
   getCandidates,
+  initializeDatabase,
   loadBrandProfile,
   persistCandidates,
   persistBrandProfile,
@@ -15,10 +16,14 @@ import {
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
-let brandProfile = loadBrandProfile();
+let brandProfile;
 
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
+
+function asyncHandler(handler) {
+  return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+}
 
 function isBrandProfile(value) {
   return value
@@ -100,47 +105,48 @@ app.get('/api/brand-profile', (req, res) => {
   res.json(brandProfile);
 });
 
-app.put('/api/brand-profile', (req, res) => {
+app.put('/api/brand-profile', asyncHandler(async (req, res) => {
   if (!isBrandProfile(req.body)) {
     return res.status(400).json({ error: 'Invalid brand profile.' });
   }
 
-  brandProfile = {
+  const updatedProfile = {
     ...req.body,
     companyName: req.body.companyName.trim(),
     updatedAt: new Date().toISOString(),
   };
-  persistBrandProfile(brandProfile);
+  await persistBrandProfile(updatedProfile);
+  brandProfile = updatedProfile;
   return res.json(brandProfile);
-});
+}));
 
-app.get('/api/scans', (req, res) => {
+app.get('/api/scans', asyncHandler(async (req, res) => {
   const requestedLimit = Number.parseInt(req.query.limit, 10);
   const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 20;
-  res.json(getScanHistory(limit));
-});
+  res.json(await getScanHistory(limit));
+}));
 
-app.get('/api/scans/:id', (req, res) => {
-  const scan = getScanById(req.params.id);
+app.get('/api/scans/:id', asyncHandler(async (req, res) => {
+  const scan = await getScanById(req.params.id);
   if (!scan) return res.status(404).json({ error: 'Scan not found.' });
   return res.json(scan);
-});
+}));
 
-app.post('/api/candidates', (req, res) => {
+app.post('/api/candidates', asyncHandler(async (req, res) => {
   const candidates = normalizeImportedCandidates(req.body);
   if (!candidates) {
     return res.status(400).json({ error: 'Invalid candidate import. Provide up to 500 valid social profiles and app listings.' });
   }
-  persistCandidates(candidates.socials, candidates.apps);
+  await persistCandidates(candidates.socials, candidates.apps);
   return res.status(201).json({
     importedSocials: candidates.socials.length,
     importedApps: candidates.apps.length,
   });
-});
+}));
 
-app.post('/api/scan', async (req, res) => {
+app.post('/api/scan', asyncHandler(async (req, res) => {
   const live = await collectLiveCandidates(brandProfile.companyName);
-  const imported = getCandidates();
+  const imported = await getCandidates();
   const includeDemoData = req.body?.settings?.demoMode !== false;
   const allSocialCandidates = [
     ...(includeDemoData ? socialCandidates : []),
@@ -179,10 +185,25 @@ app.post('/api/scan', async (req, res) => {
     sourceStatuses: activeSourceStatuses,
     detections,
   };
-  persistScan(scan);
+  await persistScan(scan);
   return res.json(scan);
+}));
+
+app.use((error, req, res, next) => {
+  console.error(`Request failed: ${req.method} ${req.path}`, error);
+  if (res.headersSent) return next(error);
+  return res.status(500).json({ error: 'The request could not be completed.' });
 });
 
-app.listen(port, () => {
-  console.log(`BrandShield API listening on http://localhost:${port}`);
+async function start() {
+  await initializeDatabase();
+  brandProfile = await loadBrandProfile();
+  app.listen(port, () => {
+    console.log(`BrandShield API listening on http://localhost:${port}`);
+  });
+}
+
+start().catch((error) => {
+  console.error('BrandShield API failed to initialize:', error);
+  process.exitCode = 1;
 });

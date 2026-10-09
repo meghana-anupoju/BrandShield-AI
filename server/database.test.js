@@ -8,17 +8,20 @@ test('brand profile and scan history survive database reconnection', async () =>
   const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'brandshield-database-test-'));
   const databasePath = path.join(tempDirectory, 'brandshield.sqlite');
   const previousDatabasePath = process.env.DATABASE_PATH;
+  const previousDatabaseUrl = process.env.DATABASE_URL;
   const connections = [];
 
   try {
+    delete process.env.DATABASE_URL;
     process.env.DATABASE_PATH = databasePath;
     const firstConnection = await import(`./database.js?first=${Date.now()}`);
     connections.push(firstConnection);
-    const profile = firstConnection.loadBrandProfile();
+    await firstConnection.initializeDatabase();
+    const profile = await firstConnection.loadBrandProfile();
     profile.companyName = 'Persistent Demo Brand';
-    firstConnection.persistBrandProfile(profile);
+    await firstConnection.persistBrandProfile(profile);
 
-    firstConnection.persistScan({
+    await firstConnection.persistScan({
       id: 'scan-persistence-test',
       timestamp: '2026-10-10T00:00:00.000Z',
       totalScanned: 4,
@@ -31,7 +34,7 @@ test('brand profile and scan history survive database reconnection', async () =>
       detections: [{ candidateId: 'candidate-1' }],
       sourceStatuses: [{ name: 'demo', status: 'demo' }],
     });
-    firstConnection.persistCandidates(
+    await firstConnection.persistCandidates(
       [{ id: 'persisted-social', username: 'sample' }],
       [{ id: 'persisted-app', appName: 'Sample' }],
     );
@@ -39,15 +42,19 @@ test('brand profile and scan history survive database reconnection', async () =>
     const secondConnection = await import(`./database.js?second=${Date.now()}`);
     connections.push(secondConnection);
 
-    assert.equal(secondConnection.loadBrandProfile().companyName, 'Persistent Demo Brand');
-    assert.equal(secondConnection.getScanHistory()[0].id, 'scan-persistence-test');
-    assert.equal(secondConnection.getScanById('scan-persistence-test').detections[0].candidateId, 'candidate-1');
-    assert.equal(secondConnection.getCandidates().socialCandidates[0].id, 'persisted-social');
-    assert.equal(secondConnection.getCandidates().appCandidates[0].id, 'persisted-app');
+    await secondConnection.initializeDatabase();
+    assert.equal((await secondConnection.loadBrandProfile()).companyName, 'Persistent Demo Brand');
+    assert.equal((await secondConnection.getScanHistory())[0].id, 'scan-persistence-test');
+    assert.equal((await secondConnection.getScanById('scan-persistence-test')).detections[0].candidateId, 'candidate-1');
+    assert.equal((await secondConnection.getCandidates()).socialCandidates[0].id, 'persisted-social');
+    assert.equal((await secondConnection.getCandidates()).appCandidates[0].id, 'persisted-app');
   } finally {
-    connections.forEach((connection) => connection.closeDatabase());
+    await Promise.all([...new Set(connections.map((connection) => connection.closeDatabase))]
+      .map((closeDatabase) => closeDatabase()));
     if (previousDatabasePath === undefined) delete process.env.DATABASE_PATH;
     else process.env.DATABASE_PATH = previousDatabasePath;
+    if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousDatabaseUrl;
     fs.rmSync(tempDirectory, { recursive: true, force: true });
   }
 });

@@ -11,7 +11,7 @@ BrandShield AI is a demo brand-protection dashboard that detects impersonating s
 - Demo scan engine with risk scoring
 - Backend API for scan and brand-profile data
 - Best-effort public search connectors for Bluesky profiles and Apple App Store listings
-- SQLite persistence for brand profiles, analyst imports, and scan history
+- SQLite local persistence and managed PostgreSQL support for profiles, imports, and scan history
 - Configurable name/risk thresholds and source health visibility
 - Official social accounts and apps excluded from threat alerts
 - Look-alike scoring for transpositions, spacing, and added brand words
@@ -24,16 +24,16 @@ npm install
 npm run dev
 ```
 
-The frontend runs on http://localhost:5173 and the API runs on http://localhost:3001. The API creates `data/brandshield.sqlite` automatically; set `DATABASE_PATH` to change its location.
+The frontend runs on http://localhost:5173 and the API runs on http://localhost:3001. Local development uses `data/brandshield.sqlite` by default. Set `DATABASE_URL` to use PostgreSQL; SQLite is selected only when that variable is unset.
 
 ## Challenge demo materials
 
 - Architecture, data-source limitations, official-asset exclusion, and a short judging demo flow: [docs/architecture.md](./docs/architecture.md)
 - `npm test` exercises look-alike names, official-asset exclusion, suspicious candidates, unrelated legitimate examples, provider normalization/failure, threshold behavior, and SQLite persistence.
 
-Bluesky and Apple App Store search results are fetched from their public search APIs only when an analyst explicitly starts a scan. The included candidate set is synthetic demo data. Other social networks and app stores are not connected, and these public searches do not provide continuous or comprehensive monitoring. Analysts can import JSON candidate exports; imports, brand profiles, and scans persist in SQLite. Provider availability and sample data are identified separately in the UI. Review each provider's terms, rate limits, and data use requirements before public deployment.
+Bluesky and Apple App Store search results are fetched from their public search APIs only when an analyst explicitly starts a scan. The included candidate set is synthetic demo data. Other social networks and app stores are not connected, and these public searches do not provide continuous or comprehensive monitoring. Analysts can import JSON candidate exports; imports, brand profiles, and scans persist in the selected database. Provider availability and sample data are identified separately in the UI. Review each provider's terms, rate limits, and data use requirements before public deployment.
 
-For persistent deployment on Render, configure `DATABASE_PATH` on a mounted persistent disk. Render's free service filesystem is ephemeral; the SQLite file can be lost when the service is replaced.
+For durable hosting, configure a managed PostgreSQL database and set its connection string as the API's `DATABASE_URL` secret. Set `DATABASE_SSL=true` when the database provider requires TLS. The Render Blueprint prompts for `DATABASE_URL`; never commit the connection string. SQLite remains for local development because Render's service filesystem is ephemeral.
 
 ### Demo sign-in
 
@@ -61,14 +61,18 @@ To customize them for a demo build, set `VITE_DEMO_EMAIL` and `VITE_DEMO_PASSWOR
 3. Use the following settings:
    - Build Command: `npm install`
    - Start Command: `npm run start`
-4. Set environment variable: `PORT=10000`
-5. Deploy.
+4. Create or select a managed PostgreSQL database. Copy its private/internal connection URL when the database and API share a provider and region; use the provider's recommended URL otherwise.
+5. In the API service's secret environment settings, set `DATABASE_URL` to that connection URL. Set `DATABASE_SSL=true` if required by the provider.
+6. Deploy the API and check `https://<your-render-service>.onrender.com/api/health`.
+
+Database hosting may incur separate charges; review the provider's current pricing and retention limits before creating the database. Do not commit `DATABASE_URL` or paste it into source files.
 
 ### Recommended for demo hosting
 
 - Host the frontend on Vercel.
 - Host the backend API on Render.
-- Set `VITE_API_BASE_URL` in the Vercel environment to the Render API URL.
+- After the API is deployed, set `VITE_API_BASE_URL` in Vercel to the Render API URL, then redeploy the frontend so the build includes the API origin.
+- Set the variable for the Vercel Production environment (and Preview too if previews should use the API).
 
 Example:
 
