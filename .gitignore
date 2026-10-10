@@ -23,3 +23,5 @@ data/
 *.sw?
 .env
 .backup/
+
+.vercel
