@@ -1,4 +1,4 @@
-# BrandShield AI — Architecture and Demo Flow
+# Trustguard AI — Architecture and Demo Flow
 
 ## Architecture
 

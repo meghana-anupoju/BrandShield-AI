@@ -1,6 +1,6 @@
 import type { ThreatDetection } from '@/types';
 
-export function exportDetectionsCSV(detections: ThreatDetection[], filename: string = 'brandshield_report.csv') {
+export function exportDetectionsCSV(detections: ThreatDetection[], filename: string = 'trustguard_report.csv') {
   const headers = [
     'Asset Name',
     'Asset Type',
@@ -61,7 +61,7 @@ export function exportFullReportCSV(
   const officialExcluded = detections.filter((d) => d.isOfficial).length;
 
   const summaryLines = [
-    ['BrandShield AI — Digital Risk Protection Report'],
+    ['Trustguard AI — Digital Risk Protection Report'],
     [''],
     ['Brand', brandName],
     ['Scan Timestamp', lastScan ? new Date(lastScan).toLocaleString() : 'No scan yet'],
@@ -95,7 +95,7 @@ export function exportFullReportCSV(
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `brandshield_full_report_${Date.now()}.csv`;
+  link.download = `trustguard_full_report_${Date.now()}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

@@ -96,7 +96,7 @@ function normalizeImportedCandidates(value) {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    service: 'brandshield-api',
+    service: 'trustguard-api',
     timestamp: new Date().toISOString(),
   });
 });
@@ -199,11 +199,11 @@ async function start() {
   await initializeDatabase();
   brandProfile = await loadBrandProfile();
   app.listen(port, () => {
-    console.log(`BrandShield API listening on http://localhost:${port}`);
+    console.log(`Trustguard API listening on http://localhost:${port}`);
   });
 }
 
 start().catch((error) => {
-  console.error('BrandShield API failed to initialize:', error);
+  console.error('Trustguard API failed to initialize:', error);
   process.exitCode = 1;
 });

@@ -1,6 +1,6 @@
-# BrandShield AI
+# Trustguard AI
 
-BrandShield AI is a demo brand-protection dashboard that detects impersonating social accounts and suspicious mobile apps using heuristic brand-matching and scam-language checks.
+Trustguard AI is a demo brand-protection dashboard that detects impersonating social accounts and suspicious mobile apps using heuristic brand-matching and scam-language checks.
 
 ## Features
 
@@ -39,7 +39,7 @@ For durable hosting, configure a managed PostgreSQL database and set its connect
 
 The sign-in screen displays and accepts the demo credentials below:
 
-- Email: `analyst@brandshield.ai`
+- Email: `analyst@trustguard.ai`
 - Password: `BrandShieldDemo2026!`
 
 To customize them for a demo build, set `VITE_DEMO_EMAIL` and `VITE_DEMO_PASSWORD` before building. Vite embeds `VITE_*` values in the public frontend bundle, so these are public demo credentials only—not secure authentication. Do not use real or sensitive passwords.

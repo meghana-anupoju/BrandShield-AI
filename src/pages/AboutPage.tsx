@@ -25,7 +25,7 @@ export function AboutPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-3">
               <span className="text-xs font-bold text-cyan-400 tracking-wide">AURA_X</span>
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">BrandShield AI</h2>
+            <h2 className="text-xl font-bold text-white mb-2">Trustguard AI</h2>
             <p className="text-sm text-slate-300 max-w-lg leading-relaxed">
               A Digital Risk Protection platform that detects fake social-media accounts, impersonating company pages,
               scam profiles, and suspicious mobile applications imitating legitimate brands. Built for HacXLerate 2026.
@@ -115,7 +115,7 @@ export function AboutPage() {
       </div>
 
       <p className="text-center text-xs text-slate-600 pb-4">
-        BrandShield AI · AURA_X Team · HacXLerate 2026 · Synthetic demonstration data
+        Trustguard AI · AURA_X Team · HacXLerate 2026 · Synthetic demonstration data
       </p>
     </div>
   );

@@ -291,7 +291,7 @@ export function OverviewPage() {
         <span className="text-[10px] text-slate-600 tracking-wider">Powered by</span>
         <span className="text-xs font-bold text-cyan-400/70 tracking-wide">AURA_X</span>
         <span className="text-[10px] text-slate-600">·</span>
-        <span className="text-[10px] text-slate-600">BrandShield AI</span>
+        <span className="text-[10px] text-slate-600">Trustguard AI</span>
       </div>
     </div>
   );

@@ -57,7 +57,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-800">
           <AuraLogo size={40} className="flex-shrink-0" />
           <div>
-            <h1 className="text-base font-bold text-white tracking-tight">BrandShield AI</h1>
+            <h1 className="text-base font-bold text-white tracking-tight">Trustguard AI</h1>
             <p className="text-[10px] text-cyan-400 leading-none mt-0.5">Digital Risk Protection</p>
           </div>
         </div>
@@ -122,7 +122,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 sticky top-0 z-20">
           <div className="flex items-center gap-2">
             <AuraLogo size={28} className="flex-shrink-0" />
-            <span className="text-sm font-bold text-white">BrandShield AI</span>
+            <span className="text-sm font-bold text-white">Trustguard AI</span>
           </div>
           <button
             onClick={() => setMobileOpen(!mobileOpen)}

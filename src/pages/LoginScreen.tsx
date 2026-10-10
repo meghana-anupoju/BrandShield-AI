@@ -3,7 +3,7 @@ import { Zap, ArrowRight } from 'lucide-react';
 import { AuraLogo } from '@/components/shared/AuraLogo';
 import { useApp } from '@/context/AppContext';
 
-const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL || 'analyst@brandshield.ai';
+const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL || 'analyst@trustguard.ai';
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD || 'BrandShieldDemo2026!';
 
 export function LoginScreen() {
@@ -43,7 +43,7 @@ export function LoginScreen() {
           <div className="inline-flex items-center justify-center mb-4">
             <AuraLogo size={80} className="drop-shadow-[0_0_20px_rgba(34,211,238,0.3)]" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">BrandShield AI</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Trustguard AI</h1>
           <p className="text-cyan-400 text-sm mt-2 font-medium">Spot the Fake. Protect the Trust.</p>
           <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700/50">
             <span className="text-[10px] text-slate-400 tracking-wider">Powered by</span>
@@ -65,7 +65,7 @@ export function LoginScreen() {
                 setEmail(e.target.value);
                 setError('');
               }}
-              placeholder="analyst@brandshield.ai"
+              placeholder="analyst@trustguard.ai"
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm focus:border-cyan-500 focus:outline-none transition-colors"
             />
           </div>
@@ -117,7 +117,7 @@ export function LoginScreen() {
         </form>
 
         <p className="text-center text-xs text-slate-600 mt-6">
-          Demo access only — do not use real passwords. BrandShield AI · AURA_X · HacXLerate 2026
+          Demo access only — do not use real passwords. Trustguard AI · AURA_X · HacXLerate 2026
         </p>
       </div>
     </div>

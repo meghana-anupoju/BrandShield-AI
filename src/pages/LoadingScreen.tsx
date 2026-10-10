@@ -18,7 +18,7 @@ export function LoadingScreen() {
         </div>
 
         {/* Brand name */}
-        <h1 className="text-2xl font-bold text-white tracking-tight mb-1">BrandShield AI</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight mb-1">Trustguard AI</h1>
         <p className="text-xs text-cyan-400 font-medium mb-6">Spot the Fake. Protect the Trust.</p>
 
         {/* Loading bar */}

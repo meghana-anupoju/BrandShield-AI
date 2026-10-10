@@ -86,7 +86,7 @@ export function SupportChat() {
     {
       id: 0,
       role: 'assistant',
-      text: `Hi! I’m the BrandShield demo support assistant. Ask me about scans, detections, reports, or setting up ${brandProfile.companyName}.`,
+      text: `Hi! I’m the Trustguard demo support assistant. Ask me about scans, detections, reports, or setting up ${brandProfile.companyName}.`,
     },
   ]);
   const listRef = useRef<HTMLDivElement>(null);
@@ -117,7 +117,7 @@ export function SupportChat() {
     <div className="fixed bottom-5 right-5 z-40">
       {open && (
         <section
-          aria-label="BrandShield customer support chat"
+          aria-label="Trustguard customer support chat"
           className="mb-3 flex h-[min(560px,calc(100vh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl shadow-black/40"
         >
           <header className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-3">
@@ -126,7 +126,7 @@ export function SupportChat() {
                 <Bot size={21} />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-white">BrandShield Support</h2>
+                <h2 className="text-sm font-semibold text-white">Trustguard Support</h2>
                 <p className="flex items-center gap-1 text-xs text-slate-400">
                   <Sparkles size={12} className="text-cyan-400" />
                   Demo assistant · FAQ-powered
